@@ -73,7 +73,7 @@ pipeline {
                 script {
                     echo '--- [SECURITY] Scanning dependencies for known vulnerabilities with Safety... ---'
                     sh '''
-                        pip3 install safety || true
+                        pip3 install --break-system-packages safety || true
                         mkdir -p security-reports
                         safety check --file requirements.txt --json > security-reports/safety-report.json || true
                         safety check --file requirements.txt || echo "WARNING: Vulnerabilities found in dependencies"
@@ -90,7 +90,7 @@ pipeline {
                 script {
                     echo '--- [SECURITY] Running Bandit Python security linter... ---'
                     sh '''
-                        pip3 install bandit || true
+                        pip3 install --break-system-packages bandit || true
                         mkdir -p security-reports
                         bandit -r . -f json -o security-reports/bandit-report.json || true
                         bandit -r . -f txt > security-reports/bandit-report.txt || echo "WARNING: Security issues found by Bandit"
