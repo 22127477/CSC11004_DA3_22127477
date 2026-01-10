@@ -1,11 +1,5 @@
 aws-key-da3.pem
 
-# Personal files
-22127477.pdf
-PIPELINE_RESULTS.md
-TROUBLESHOOTING.md
-sonar-project.properties
-
 # Python cache
 __pycache__/
 *.py[cod]
@@ -53,10 +47,3 @@ logs/
 .env
 secrets/
 credentials/
-
-# Documentation
-DEMO_SCRIPT.md
-DevSecOps_README.md
-SECURITY.md
-BAO_CAO_DEVSECOPS_VA_CAU_HINH.md
-DEMO_SCRIPT_CHI_TIET.md

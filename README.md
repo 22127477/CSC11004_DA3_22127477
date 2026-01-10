@@ -6,7 +6,7 @@ Dự án triển khai **hệ thống CI/CD có kiểm thử bảo mật (DevSecO
 
 ## Điểm Nổi Bật
 
-- **7 Security Scanning Tools**: Bandit, Safety, SonarQube, Trivy, OWASP ZAP
+- **6 Security Scanning Tools**: Bandit, Safety, Trivy, OWASP ZAP
 - **Full CI/CD Automation**: GitHub → Jenkins → Docker Hub → AWS EC2
 - **Comprehensive Security Reports**: JSON, HTML, visual dashboards
 - **Production Deployment**: Automated deployment với security checks
@@ -22,9 +22,6 @@ DA3/
 ├── requirements.txt            # Python dependencies
 ├── .bandit                     # Bandit security config
 ├── .trivyignore               # Trivy ignore rules
-├── sonar-project.properties   # SonarQube configuration
-├── SECURITY.md                # Security policy
-├── DevSecOps_README.md        # Full pipeline documentation
 └── README.md                  # This file
 ```
 
@@ -33,7 +30,6 @@ DA3/
 ### SAST - Static Analysis
 1. **Safety**: Dependency vulnerability scanning
 2. **Bandit**: Python security linting
-3. **SonarQube**: Code quality & security analysis
 
 ### Container Security
 4. **Trivy**: Docker image vulnerability scanning
@@ -88,7 +84,6 @@ Jenkins > Build #XX > Artifacts > security-reports/
 |------|---------|------|---------------|
 | **Bandit** | Python security linting | SAST | [Link](https://bandit.readthedocs.io/) |
 | **Safety** | Dependency vulnerability scan | SAST | [Link](https://pyup.io/safety/) |
-| **SonarQube** | Code quality & security | SAST | [Link](https://docs.sonarqube.org/) |
 | **Trivy** | Container image scanning | Container Security | [Link](https://aquasecurity.github.io/trivy/) |
 | **OWASP ZAP** | Dynamic penetration testing | DAST | [Link](https://www.zaproxy.org/docs/) |
 
@@ -112,7 +107,6 @@ Xem **[SECURITY.md](SECURITY.md)** để biết:
 ### SAST (Static Application Security Testing)
 - **Bandit**: Phân tích code Python tìm lỗ hổng bảo mật
 - **Safety**: Quét dependencies tìm CVEs
-- **SonarQube**: Phân tích chất lượng code và security hotspots
 
 ### DAST (Dynamic Application Security Testing)
 - **OWASP ZAP**: Penetration testing ứng dụng đang chạy
@@ -160,13 +154,12 @@ graph LR
     A[Git Push] --> B[Checkout]
     B --> C[Safety Scan]
     C --> D[Bandit Scan]
-    D --> E[SonarQube]
-    E --> F[Build Docker]
-    F --> G[Trivy Scan]
-    G --> H[Push to Hub]
-    H --> I[Deploy EC2]
-    I --> J[OWASP ZAP]
-    J --> K[Archive Reports]
+    D --> E[Build Docker]
+    E --> F[Trivy Scan]
+    F --> G[Push to Hub]
+    G --> H[Deploy EC2]
+    H --> I[OWASP ZAP]
+    I --> J[Archive Reports]
 ```
 
 ## Technology Stack
@@ -176,7 +169,7 @@ graph LR
 - **CI/CD**: Jenkins
 - **Cloud**: AWS EC2
 - **Registry**: Docker Hub
-- **Security**: Bandit, Safety, SonarQube, Trivy, OWASP ZAP
+- **Security**: Bandit, Safety, Trivy, OWASP ZAP
 
 ## Author
 
@@ -193,7 +186,6 @@ This project is for educational purposes only.
 
 - OWASP for security testing tools and guidelines
 - Aqua Security for Trivy
-- SonarSource for SonarQube
 - PyCQA for Bandit
 - PyUp for Safety
 
@@ -214,4 +206,3 @@ Pipeline sẽ tự động:
 4. Test bảo mật ứng dụng
 5. Tạo security reports
 
-**Application URL**: http://54.224.199.65:5000 (sau khi deploy)
