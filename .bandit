@@ -1,31 +1,11 @@
-# Bandit Configuration File
-# Python security linter configuration
-
 [bandit]
-# Exclude test files and virtual environments
-exclude_dirs = [
-    '/tests',
-    '/.venv',
-    '/venv',
-    '/.tox',
-    '/node_modules'
-]
+exclude: /tests,/.venv,/venv,/.tox,/node_modules,/build,/.git
 
-# Tests to skip (if any)
-skips = []
+# Test IDs to skip (if needed)
+# skips: B201,B301
 
-# Severity level (LOW, MEDIUM, HIGH)
-# Reports issues with severity level >= MEDIUM
-severity = MEDIUM
+# Exclude specific test IDs (commented out to enable all tests)
+# tests: B201,B301,B302,B303,B304,B305,B306,B307,B308,B309,B310,B311,B312,B313,B314,B315,B316,B317,B318,B319,B320,B321,B323,B324,B325,B501,B502,B503,B504,B505,B506,B507,B601,B602,B603,B604,B605,B606,B607,B608,B609,B610,B611,B701,B702,B703
 
-# Confidence level (LOW, MEDIUM, HIGH)
-confidence = MEDIUM
-
-# Output format
-format = txt
-
-# Show code snippets in report
-show_code_snippets = true
-
-# Recursively scan directories
-recursive = true
+# Targets: Specify files/directories to scan (default is current directory)
+# targets: app.py,module/

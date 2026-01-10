@@ -1,40 +1,25 @@
 from flask import Flask
-# [DEMO] Injected vulnerabilities for testing
-
 import pickle
-
-  
-
-# Vulnerability 1: Hardcoded password
-
-admin_password = "admin123"  # Bandit will catch this (B105)
-
-  
-
-# Vulnerability 2: Weak cryptography
-
 import hashlib
 
-def  weak_hash(data):
-
-return hashlib.md5(data.encode()).hexdigest() # Bandit will catch this (B303)
-
-  
-
-# Vulnerability 3: Pickle usage (dangerous)
-
-@app.route('/load')
-
-def  load_data():
-
-with  open('data.pkl', 'rb') as f:
-
-return pickle.load(f) # Bandit will catch this (B301)
 app = Flask(__name__)
+
+# [DEMO] Vulnerability 1: Hardcoded password
+admin_password = "admin123"  # Bandit will catch this (B105)
+
+# [DEMO] Vulnerability 2: Weak cryptography
+def weak_hash(data):
+    return hashlib.md5(data.encode()).hexdigest()  # Bandit will catch this (B303)
 
 @app.route('/')
 def hello():
     return "Hello Teacher! Deployed on AWS Cloud via Jenkins!"
+
+# [DEMO] Vulnerability 3: Pickle usage (dangerous)
+@app.route('/load')
+def load_data():
+    with open('data.pkl', 'rb') as f:
+        return pickle.load(f)  # Bandit will catch this (B301)
 
 @app.after_request
 def add_security_headers(response):
