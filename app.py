@@ -20,7 +20,7 @@ def hello():
 def load_data():
     with open('data.pkl', 'rb') as f:
         return pickle.load(f)  # Bandit will catch this (B301)
-
+#DEMO
 @app.after_request
 def add_security_headers(response):
     """Add security headers to prevent common vulnerabilities"""
