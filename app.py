@@ -41,5 +41,5 @@ def add_security_headers(response):
     return response
 
 if __name__ == '__main__':
-    app.run(host='0.0.0.0', port=5000)
-# Updated for demo
+    # Bind to 0.0.0.0 for Docker container accessibility
+    app.run(host='0.0.0.0', port=5000)  # nosec B104
