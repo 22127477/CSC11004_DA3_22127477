@@ -149,19 +149,24 @@ pipeline {
                 script {
                     echo '--- [SECURITY] Scanning Docker image for vulnerabilities with Trivy... ---'
                     sh '''
-                        # Install Trivy if not already installed
-                        if ! command -v trivy &> /dev/null; then
-                            echo "Installing Trivy..."
-                            wget -qO - https://aquasecurity.github.io/trivy-repo/deb/public.key | sudo apt-key add - || true
-                            echo "deb https://aquasecurity.github.io/trivy-repo/deb $(lsb_release -sc) main" | sudo tee -a /etc/apt/sources.list.d/trivy.list || true
-                            sudo apt-get update || true
-                            sudo apt-get install trivy -y || true
-                        fi
-                        
                         mkdir -p security-reports
-                        # Run Trivy scan on the built image
-                        trivy image --format json --output security-reports/trivy-report.json ${DOCKERHUB_USERNAME}/${IMAGE_NAME}:${IMAGE_TAG} || true
-                        trivy image --severity HIGH,CRITICAL ${DOCKERHUB_USERNAME}/${IMAGE_NAME}:${IMAGE_TAG} > security-reports/trivy-report.txt || echo "WARNING: Vulnerabilities found in Docker image"
+                        
+                        # Use Trivy Docker image instead of installing locally
+                        echo "Running Trivy scan using Docker..."
+                        docker run --rm -v /var/run/docker.sock:/var/run/docker.sock \
+                            -v $(pwd)/security-reports:/output \
+                            aquasec/trivy:latest image \
+                            --format json \
+                            --output /output/trivy-report.json \
+                            ${DOCKERHUB_USERNAME}/${IMAGE_NAME}:${IMAGE_TAG} || true
+                        
+                        docker run --rm -v /var/run/docker.sock:/var/run/docker.sock \
+                            -v $(pwd)/security-reports:/output \
+                            aquasec/trivy:latest image \
+                            --severity HIGH,CRITICAL \
+                            ${DOCKERHUB_USERNAME}/${IMAGE_NAME}:${IMAGE_TAG} > security-reports/trivy-report.txt || echo "WARNING: Vulnerabilities found in Docker image"
+                        
+                        echo "Trivy scan completed"
                     '''
                 }
             }
