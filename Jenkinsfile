@@ -94,8 +94,19 @@ pipeline {
                         pip3 install --break-system-packages bandit || true
                         export PATH="$HOME/.local/bin:$PATH"
                         mkdir -p security-reports
+                        
+                        # Generate full report for archive
                         bandit -r . -f json -o security-reports/bandit-report.json || true
-                        bandit -r . -f txt > security-reports/bandit-report.txt || echo "WARNING: Security issues found by Bandit"
+                        bandit -r . -f txt > security-reports/bandit-report.txt || true
+                        
+                        # Check for HIGH/MEDIUM severity issues and FAIL if found
+                        echo "Checking for HIGH/MEDIUM severity security issues..."
+                        bandit -r . -ll -ii  # -ll = severity MEDIUM+, -ii = confidence MEDIUM+
+                        
+                        if [ $? -ne 0 ]; then
+                            echo "ERROR: Security issues found! Build failed."
+                            exit 1
+                        fi
                     '''
                 }
             }
