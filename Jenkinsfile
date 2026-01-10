@@ -243,18 +243,29 @@ pipeline {
                         # Test if application is accessible
                         curl -f http://${AWS_IP}:5000 || echo "WARNING: Application might not be ready yet"
                         
+                        # Create reports directory with proper permissions
+                        mkdir -p ${SECURITY_REPORTS_DIR}
+                        chmod 777 ${SECURITY_REPORTS_DIR}
+                        
                         # Pull OWASP ZAP Docker image (using official registry)
                         echo "Pulling OWASP ZAP Docker image from Docker Hub..."
-                        docker pull ghcr.io/zaproxy/zaproxy:stable || docker pull owasp/zap2docker-stable || true
+                        docker pull ghcr.io/zaproxy/zaproxy:stable || docker pull softwaresecurityproject/zap-stable || true
                         
                         # Run OWASP ZAP baseline scan
                         echo "Running OWASP ZAP baseline scan..."
                         docker run --rm -v \$(pwd)/${SECURITY_REPORTS_DIR}:/zap/wrk/:rw \
+                            -u zap \
                             ghcr.io/zaproxy/zaproxy:stable zap-baseline.py \
                             -t http://${AWS_IP}:5000 \
                             -J zap-report.json \
                             -r zap-report.html \
                             -I || echo "WARNING: Security issues found by ZAP (exit code ignored for demo)"
+                        
+                        # Generate text summary for console
+                        echo "=== OWASP ZAP Scan Summary ==="
+                        if [ -f ${SECURITY_REPORTS_DIR}/zap-report.json ]; then
+                            echo "ZAP Report generated successfully"
+                        fi
                     """
                 }
             }
