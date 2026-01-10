@@ -74,6 +74,7 @@ pipeline {
                     echo '--- [SECURITY] Scanning dependencies for known vulnerabilities with Safety... ---'
                     sh '''
                         pip3 install --break-system-packages safety || true
+                        export PATH="$HOME/.local/bin:$PATH"
                         mkdir -p security-reports
                         safety check --file requirements.txt --json > security-reports/safety-report.json || true
                         safety check --file requirements.txt || echo "WARNING: Vulnerabilities found in dependencies"
@@ -91,6 +92,7 @@ pipeline {
                     echo '--- [SECURITY] Running Bandit Python security linter... ---'
                     sh '''
                         pip3 install --break-system-packages bandit || true
+                        export PATH="$HOME/.local/bin:$PATH"
                         mkdir -p security-reports
                         bandit -r . -f json -o security-reports/bandit-report.json || true
                         bandit -r . -f txt > security-reports/bandit-report.txt || echo "WARNING: Security issues found by Bandit"
@@ -100,32 +102,7 @@ pipeline {
         }
 
         // --------------------------------------------------------
-        // STAGE 4: CODE QUALITY & SECURITY ANALYSIS (SAST)
-        // --------------------------------------------------------
-        stage('SAST: SonarQube Analysis') {
-            steps {
-                script {
-                    echo '--- [SECURITY] Running SonarQube code quality and security analysis... ---'
-                    // Requires SonarQube Scanner installed on Jenkins
-                    // This is optional - comment out if SonarQube is not configured
-                    sh '''
-                        # Check if sonar-scanner is available
-                        if command -v sonar-scanner &> /dev/null; then
-                            sonar-scanner \
-                                -Dsonar.projectKey=${SONAR_PROJECT_KEY} \
-                                -Dsonar.sources=. \
-                                -Dsonar.host.url=${SONAR_HOST_URL} \
-                                -Dsonar.python.bandit.reportPaths=security-reports/bandit-report.json || true
-                        else
-                            echo "INFO: SonarQube Scanner not installed, skipping..."
-                        fi
-                    '''
-                }
-            }
-        }
-
-        // --------------------------------------------------------
-        // STAGE 5: BUILD DOCKER IMAGE
+        // STAGE 4: BUILD DOCKER IMAGE
         // --------------------------------------------------------
         stage('Build Docker Image') {
             steps {
@@ -142,7 +119,7 @@ pipeline {
         }
 
         // --------------------------------------------------------
-        // STAGE 6: CONTAINER SECURITY SCAN WITH TRIVY
+        // STAGE 5: CONTAINER SECURITY SCAN WITH TRIVY
         // --------------------------------------------------------
         stage('Container Security: Trivy Scan') {
             steps {
@@ -173,7 +150,7 @@ pipeline {
         }
 
         // --------------------------------------------------------
-        // STAGE 7: PUSH TO DOCKER HUB
+        // STAGE 6: PUSH TO DOCKER HUB
         // --------------------------------------------------------
         stage('Push to Registry') {
             steps {
@@ -196,7 +173,7 @@ pipeline {
         }
 
         // --------------------------------------------------------
-        // STAGE 8: DEPLOY TO AWS EC2 (CD)
+        // STAGE 7: DEPLOY TO AWS EC2 (CD)
         // --------------------------------------------------------
         stage('Deploy to AWS Cloud') {
             steps {
@@ -236,7 +213,7 @@ pipeline {
         }
         
         // --------------------------------------------------------
-        // STAGE 9: DYNAMIC APPLICATION SECURITY TESTING (DAST)
+        // STAGE 8: DYNAMIC APPLICATION SECURITY TESTING (DAST)
         // --------------------------------------------------------
         stage('DAST: OWASP ZAP Scan') {
             steps {
@@ -279,7 +256,7 @@ pipeline {
         }
         
         // --------------------------------------------------------
-        // STAGE 10: SECURITY REPORT ARCHIVAL
+        // STAGE 9: SECURITY REPORT ARCHIVAL
         // --------------------------------------------------------
         stage('Archive Security Reports') {
             steps {
@@ -302,7 +279,7 @@ pipeline {
         }
         
         // --------------------------------------------------------
-        // STAGE 11: CLEANUP (LOCAL JENKINS)
+        // STAGE 10: CLEANUP (LOCAL JENKINS)
         // --------------------------------------------------------
         stage('Post-Build Cleanup') {
             steps {

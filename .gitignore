@@ -1,5 +1,11 @@
 aws-key-da3.pem
 
+# Personal files
+22127477.pdf
+PIPELINE_RESULTS.md
+TROUBLESHOOTING.md
+sonar-project.properties
+
 # Python cache
 __pycache__/
 *.py[cod]
