@@ -1,1 +1,6 @@
-flask
+flask==3.0.0
+werkzeug==3.0.1
+
+# Security and testing dependencies
+bandit==1.7.5
+safety==3.0.1

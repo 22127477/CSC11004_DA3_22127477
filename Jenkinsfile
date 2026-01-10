@@ -2,13 +2,19 @@
  * ===================================================================================
  * PROJECT: Advanced Computer Networking - Final Project (DA3)
  * AUTHOR: 22127477
- * SYSTEM: CI/CD Pipeline (Jenkins -> Docker Hub -> AWS EC2)
+ * SYSTEM: DevSecOps CI/CD Pipeline (Jenkins -> Docker Hub -> AWS EC2)
  * DESCRIPTION:
- * This pipeline automates the lifecycle of the Flask application:
+ * This pipeline automates the SECURE lifecycle of the Flask application:
  * 1. SCM Checkout: Pulls code from GitHub.
- * 2. Build: Creates a Docker image.
- * 3. Push: Uploads artifacts to Docker Hub Registry.
- * 4. Deploy: Connects to AWS EC2 via SSH and updates the running container.
+ * 2. SAST - Static Application Security Testing:
+ *    - Bandit: Python security linting
+ *    - Safety: Dependency vulnerability scanning
+ *    - SonarQube: Code quality & security analysis
+ * 3. Build: Creates a Docker image.
+ * 4. Container Security Scanning: Trivy scans Docker image for vulnerabilities
+ * 5. Push: Uploads artifacts to Docker Hub Registry.
+ * 6. Deploy: Connects to AWS EC2 via SSH and updates the running container.
+ * 7. DAST - Dynamic Application Security Testing: OWASP ZAP penetration testing
  * ===================================================================================
  */
 
@@ -37,6 +43,11 @@ pipeline {
         // --- CREDENTIALS IDs (Managed in Jenkins) ---
         DOCKER_CRED_ID = 'docker-hub-credentials'
         AWS_SSH_CRED_ID = 'aws-ec2-key'
+        
+        // --- SECURITY SCANNING CONFIGURATION ---
+        SECURITY_REPORTS_DIR = 'security-reports'
+        SONAR_PROJECT_KEY = 'csc11004-da3'
+        SONAR_HOST_URL = 'http://localhost:9000' // Update if using external SonarQube
     }
 
     stages {
@@ -48,17 +59,77 @@ pipeline {
                 script {
                     echo '--- [INFO] Step 1: Checking out source code from GitHub... ---'
                     checkout scm
+                    // Create directory for security reports
+                    sh "mkdir -p ${SECURITY_REPORTS_DIR}"
                 }
             }
         }
 
         // --------------------------------------------------------
-        // STAGE 2: BUILD DOCKER IMAGE
+        // STAGE 2: DEPENDENCY VULNERABILITY SCAN (SAST)
+        // --------------------------------------------------------
+        stage('SAST: Dependency Check') {
+            steps {
+                script {
+                    echo '--- [SECURITY] Scanning dependencies for known vulnerabilities with Safety... ---'
+                    // Install safety if not already installed
+                    sh '''
+                        pip3 install safety || true
+                        safety check --file requirements.txt --json --output ${SECURITY_REPORTS_DIR}/safety-report.json || true
+                        safety check --file requirements.txt || echo "WARNING: Vulnerabilities found in dependencies"
+                    '''
+                }
+            }
+        }
+
+        // --------------------------------------------------------
+        // STAGE 3: PYTHON SECURITY LINTING (SAST)
+        // --------------------------------------------------------
+        stage('SAST: Bandit Security Scan') {
+            steps {
+                script {
+                    echo '--- [SECURITY] Running Bandit Python security linter... ---'
+                    sh '''
+                        pip3 install bandit || true
+                        bandit -r . -f json -o ${SECURITY_REPORTS_DIR}/bandit-report.json || true
+                        bandit -r . -f txt || echo "WARNING: Security issues found by Bandit"
+                    '''
+                }
+            }
+        }
+
+        // --------------------------------------------------------
+        // STAGE 4: CODE QUALITY & SECURITY ANALYSIS (SAST)
+        // --------------------------------------------------------
+        stage('SAST: SonarQube Analysis') {
+            steps {
+                script {
+                    echo '--- [SECURITY] Running SonarQube code quality and security analysis... ---'
+                    // Requires SonarQube Scanner installed on Jenkins
+                    // This is optional - comment out if SonarQube is not configured
+                    sh '''
+                        # Check if sonar-scanner is available
+                        if command -v sonar-scanner &> /dev/null; then
+                            sonar-scanner \
+                                -Dsonar.projectKey=${SONAR_PROJECT_KEY} \
+                                -Dsonar.sources=. \
+                                -Dsonar.host.url=${SONAR_HOST_URL} \
+                                -Dsonar.python.bandit.reportPaths=${SECURITY_REPORTS_DIR}/bandit-report.json || true
+                        else
+                            echo "INFO: SonarQube Scanner not installed, skipping..."
+                        fi
+                    '''
+                }
+            }
+        }
+
+        // --------------------------------------------------------
+        // STAGE 5: BUILD DOCKER IMAGE
         // --------------------------------------------------------
         stage('Build Docker Image') {
             steps {
                 script {
-                    echo "--- [INFO] Step 2: Building Docker image tag: ${IMAGE_TAG} ---"
+                    echo "--- [INFO] Step 5: Building Docker image tag: ${IMAGE_TAG} ---"
                     
                     // Build the image using the Dockerfile in the current directory
                     sh "docker build -t ${DOCKERHUB_USERNAME}/${IMAGE_NAME}:${IMAGE_TAG} ."
@@ -70,7 +141,32 @@ pipeline {
         }
 
         // --------------------------------------------------------
-        // STAGE 3: PUSH TO DOCKER HUB
+        // STAGE 6: CONTAINER SECURITY SCAN WITH TRIVY
+        // --------------------------------------------------------
+        stage('Container Security: Trivy Scan') {
+            steps {
+                script {
+                    echo '--- [SECURITY] Scanning Docker image for vulnerabilities with Trivy... ---'
+                    sh '''
+                        # Install Trivy if not already installed
+                        if ! command -v trivy &> /dev/null; then
+                            echo "Installing Trivy..."
+                            wget -qO - https://aquasecurity.github.io/trivy-repo/deb/public.key | sudo apt-key add - || true
+                            echo "deb https://aquasecurity.github.io/trivy-repo/deb $(lsb_release -sc) main" | sudo tee -a /etc/apt/sources.list.d/trivy.list || true
+                            sudo apt-get update || true
+                            sudo apt-get install trivy -y || true
+                        fi
+                        
+                        # Run Trivy scan on the built image
+                        trivy image --format json --output ${SECURITY_REPORTS_DIR}/trivy-report.json ${DOCKERHUB_USERNAME}/${IMAGE_NAME}:${IMAGE_TAG} || true
+                        trivy image --severity HIGH,CRITICAL ${DOCKERHUB_USERNAME}/${IMAGE_NAME}:${IMAGE_TAG} || echo "WARNING: Vulnerabilities found in Docker image"
+                    '''
+                }
+            }
+        }
+
+        // --------------------------------------------------------
+        // STAGE 7: PUSH TO DOCKER HUB
         // --------------------------------------------------------
         stage('Push to Registry') {
             steps {
@@ -93,7 +189,7 @@ pipeline {
         }
 
         // --------------------------------------------------------
-        // STAGE 4: DEPLOY TO AWS EC2 (CD)
+        // STAGE 8: DEPLOY TO AWS EC2 (CD)
         // --------------------------------------------------------
         stage('Deploy to AWS Cloud') {
             steps {
@@ -133,7 +229,65 @@ pipeline {
         }
         
         // --------------------------------------------------------
-        // STAGE 5: CLEANUP (LOCAL JENKINS)
+        // STAGE 9: DYNAMIC APPLICATION SECURITY TESTING (DAST)
+        // --------------------------------------------------------
+        stage('DAST: OWASP ZAP Scan') {
+            steps {
+                script {
+                    echo '--- [SECURITY] Running OWASP ZAP dynamic security testing... ---'
+                    sh """
+                        # Wait for application to be ready
+                        echo "Waiting for application to start..."
+                        sleep 10
+                        
+                        # Check if ZAP is available (using Docker)
+                        if docker images | grep -q owasp/zap2docker-stable; then
+                            echo "Running OWASP ZAP baseline scan..."
+                            docker run --rm -v \$(pwd)/${SECURITY_REPORTS_DIR}:/zap/wrk/:rw \
+                                owasp/zap2docker-stable zap-baseline.py \
+                                -t http://${AWS_IP}:5000 \
+                                -J zap-report.json \
+                                -r zap-report.html || echo "WARNING: Security issues found by ZAP"
+                        else
+                            echo "Pulling OWASP ZAP Docker image..."
+                            docker pull owasp/zap2docker-stable
+                            echo "Running OWASP ZAP baseline scan..."
+                            docker run --rm -v \$(pwd)/${SECURITY_REPORTS_DIR}:/zap/wrk/:rw \
+                                owasp/zap2docker-stable zap-baseline.py \
+                                -t http://${AWS_IP}:5000 \
+                                -J zap-report.json \
+                                -r zap-report.html || echo "WARNING: Security issues found by ZAP"
+                        fi
+                    """
+                }
+            }
+        }
+        
+        // --------------------------------------------------------
+        // STAGE 10: SECURITY REPORT ARCHIVAL
+        // --------------------------------------------------------
+        stage('Archive Security Reports') {
+            steps {
+                script {
+                    echo '--- [INFO] Archiving security reports... ---'
+                    // Archive all security reports as Jenkins artifacts
+                    archiveArtifacts artifacts: "${SECURITY_REPORTS_DIR}/**/*", allowEmptyArchive: true
+                    
+                    // Optional: Publish HTML reports
+                    publishHTML(target: [
+                        allowMissing: true,
+                        alwaysLinkToLastBuild: true,
+                        keepAll: true,
+                        reportDir: "${SECURITY_REPORTS_DIR}",
+                        reportFiles: 'zap-report.html',
+                        reportName: 'OWASP ZAP Security Report'
+                    ])
+                }
+            }
+        }
+        
+        // --------------------------------------------------------
+        // STAGE 11: CLEANUP (LOCAL JENKINS)
         // --------------------------------------------------------
         stage('Post-Build Cleanup') {
             steps {
@@ -151,14 +305,20 @@ pipeline {
     post {
         success {
             echo "========================================================================"
-            echo " [SUCCESS] Pipeline Finished! "
+            echo " [SUCCESS] DevSecOps Pipeline Finished! "
             echo " App is running at: http://${AWS_IP}:5000"
+            echo " Security Reports: Check Jenkins artifacts for detailed scan results"
             echo "========================================================================"
         }
         failure {
             echo "========================================================================"
             echo " [FAILURE] Pipeline Failed. Please check the Console Output for errors."
+            echo " Review security scan results in the ${SECURITY_REPORTS_DIR} directory."
             echo "========================================================================"
+        }
+        always {
+            // Clean up workspace on every build
+            cleanWs()
         }
     }
 }

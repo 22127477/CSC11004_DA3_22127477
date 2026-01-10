@@ -1,0 +1,9 @@
+# Trivy Ignore File
+# Specify CVEs to ignore during container scanning
+
+# Example: Ignore specific CVEs that are false positives or accepted risks
+# CVE-2024-12345
+# CVE-2024-67890
+
+# Note: Only ignore vulnerabilities after proper risk assessment
+# Document the reason for ignoring each CVE

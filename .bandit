@@ -1,0 +1,31 @@
+# Bandit Configuration File
+# Python security linter configuration
+
+[bandit]
+# Exclude test files and virtual environments
+exclude_dirs = [
+    '/tests',
+    '/.venv',
+    '/venv',
+    '/.tox',
+    '/node_modules'
+]
+
+# Tests to skip (if any)
+skips = []
+
+# Severity level (LOW, MEDIUM, HIGH)
+# Reports issues with severity level >= MEDIUM
+severity = MEDIUM
+
+# Confidence level (LOW, MEDIUM, HIGH)
+confidence = MEDIUM
+
+# Output format
+format = txt
+
+# Show code snippets in report
+show_code_snippets = true
+
+# Recursively scan directories
+recursive = true
