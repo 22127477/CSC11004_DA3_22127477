@@ -72,10 +72,10 @@ pipeline {
             steps {
                 script {
                     echo '--- [SECURITY] Scanning dependencies for known vulnerabilities with Safety... ---'
-                    // Install safety if not already installed
                     sh '''
                         pip3 install safety || true
-                        safety check --file requirements.txt --json --output ${SECURITY_REPORTS_DIR}/safety-report.json || true
+                        mkdir -p security-reports
+                        safety check --file requirements.txt --json > security-reports/safety-report.json || true
                         safety check --file requirements.txt || echo "WARNING: Vulnerabilities found in dependencies"
                     '''
                 }
@@ -91,8 +91,9 @@ pipeline {
                     echo '--- [SECURITY] Running Bandit Python security linter... ---'
                     sh '''
                         pip3 install bandit || true
-                        bandit -r . -f json -o ${SECURITY_REPORTS_DIR}/bandit-report.json || true
-                        bandit -r . -f txt || echo "WARNING: Security issues found by Bandit"
+                        mkdir -p security-reports
+                        bandit -r . -f json -o security-reports/bandit-report.json || true
+                        bandit -r . -f txt > security-reports/bandit-report.txt || echo "WARNING: Security issues found by Bandit"
                     '''
                 }
             }
@@ -114,7 +115,7 @@ pipeline {
                                 -Dsonar.projectKey=${SONAR_PROJECT_KEY} \
                                 -Dsonar.sources=. \
                                 -Dsonar.host.url=${SONAR_HOST_URL} \
-                                -Dsonar.python.bandit.reportPaths=${SECURITY_REPORTS_DIR}/bandit-report.json || true
+                                -Dsonar.python.bandit.reportPaths=security-reports/bandit-report.json || true
                         else
                             echo "INFO: SonarQube Scanner not installed, skipping..."
                         fi
@@ -157,9 +158,10 @@ pipeline {
                             sudo apt-get install trivy -y || true
                         fi
                         
+                        mkdir -p security-reports
                         # Run Trivy scan on the built image
-                        trivy image --format json --output ${SECURITY_REPORTS_DIR}/trivy-report.json ${DOCKERHUB_USERNAME}/${IMAGE_NAME}:${IMAGE_TAG} || true
-                        trivy image --severity HIGH,CRITICAL ${DOCKERHUB_USERNAME}/${IMAGE_NAME}:${IMAGE_TAG} || echo "WARNING: Vulnerabilities found in Docker image"
+                        trivy image --format json --output security-reports/trivy-report.json ${DOCKERHUB_USERNAME}/${IMAGE_NAME}:${IMAGE_TAG} || true
+                        trivy image --severity HIGH,CRITICAL ${DOCKERHUB_USERNAME}/${IMAGE_NAME}:${IMAGE_TAG} > security-reports/trivy-report.txt || echo "WARNING: Vulnerabilities found in Docker image"
                     '''
                 }
             }
@@ -244,8 +246,8 @@ pipeline {
                         curl -f http://${AWS_IP}:5000 || echo "WARNING: Application might not be ready yet"
                         
                         # Create reports directory with proper permissions
-                        mkdir -p ${SECURITY_REPORTS_DIR}
-                        chmod 777 ${SECURITY_REPORTS_DIR}
+                        mkdir -p security-reports
+                        chmod 777 security-reports
                         
                         # Pull OWASP ZAP Docker image (using official registry)
                         echo "Pulling OWASP ZAP Docker image from Docker Hub..."
@@ -253,7 +255,7 @@ pipeline {
                         
                         # Run OWASP ZAP baseline scan
                         echo "Running OWASP ZAP baseline scan..."
-                        docker run --rm -v \$(pwd)/${SECURITY_REPORTS_DIR}:/zap/wrk/:rw \
+                        docker run --rm -v \$(pwd)/security-reports:/zap/wrk/:rw \
                             -u zap \
                             ghcr.io/zaproxy/zaproxy:stable zap-baseline.py \
                             -t http://${AWS_IP}:5000 \
@@ -263,7 +265,7 @@ pipeline {
                         
                         # Generate text summary for console
                         echo "=== OWASP ZAP Scan Summary ==="
-                        if [ -f ${SECURITY_REPORTS_DIR}/zap-report.json ]; then
+                        if [ -f security-reports/zap-report.json ]; then
                             echo "ZAP Report generated successfully"
                         fi
                     """
@@ -279,14 +281,14 @@ pipeline {
                 script {
                     echo '--- [INFO] Archiving security reports... ---'
                     // Archive all security reports as Jenkins artifacts
-                    archiveArtifacts artifacts: "${SECURITY_REPORTS_DIR}/**/*", allowEmptyArchive: true
+                    archiveArtifacts artifacts: "security-reports/**/*", allowEmptyArchive: true
                     
                     // Optional: Publish HTML reports
                     publishHTML(target: [
                         allowMissing: true,
                         alwaysLinkToLastBuild: true,
                         keepAll: true,
-                        reportDir: "${SECURITY_REPORTS_DIR}",
+                        reportDir: "security-reports",
                         reportFiles: 'zap-report.html',
                         reportName: 'OWASP ZAP Security Report'
                     ])
